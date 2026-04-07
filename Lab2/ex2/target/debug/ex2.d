@@ -1,0 +1,1 @@
+C:\Users\stefa\OneDrive\ -\ Politecnico\ di\ Torino\Desktop\Programmazione\ di\ Sistema\Rust\Labs\Lab2\ex2\target\debug\ex2.exe: C:\Users\stefa\OneDrive\ -\ Politecnico\ di\ Torino\Desktop\Programmazione\ di\ Sistema\Rust\Labs\Lab2\ex2\src\main.rs C:\Users\stefa\OneDrive\ -\ Politecnico\ di\ Torino\Desktop\Programmazione\ di\ Sistema\Rust\Labs\Lab2\ex2\src\table.rs
