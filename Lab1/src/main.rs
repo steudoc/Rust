@@ -1,11 +1,10 @@
 use crate::cli::parse_args;
-
-mod cli;
-mod io;
-
 use std::env;
 use std::process;
 use crate::io::process_csv;
+
+mod cli;
+mod io;
 
 fn main() {
 

@@ -1,0 +1,10 @@
+File to analize
+Row 2
+Row 3
+Row 4
+abcdefghijklmnopqrstuvwxyz
+Row 6
+Row 7
+Row 8
+Row 9
+Row 10

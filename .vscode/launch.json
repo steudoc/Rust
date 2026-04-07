@@ -12,5 +12,8 @@
             "args": [],
             "cwd": "${workspaceRoot}"
         }
-    ]
+    ],
+    "rust-analyzer.check.command": "clippy",
+    "editor.formatOnSave": true,
+    "rust-analyzer.completion.fullFunctionSignatures.enable": true
 }
