@@ -9,7 +9,7 @@ pub struct Board {
     data: [[u8; BSIZE]; BSIZE],
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Error { Overlap, OutOfBounds, BoatCount }
 
 #[derive(Debug)]
@@ -105,7 +105,7 @@ impl Board {
     }
 
     /// Aggiunge la nave; restituisce la nuova Board o un errore
-    pub fn add_boat(self, boat: Boat, pos: (usize, usize)) -> Result<Board, Error> {
+    pub fn add_boat(&mut self, boat: Boat, pos: (usize, usize)) -> Result<&Board, Error> {
         let row = pos.0 - 1;
         let col = pos.1 - 1;
 
@@ -147,19 +147,17 @@ impl Board {
             }
         }
 
-        let mut new_board = self;
-
         // 4. Inserimento della nave
         for i in 0..len {
             let r = if is_vertical { row + i } else { row };
             let c = if is_vertical { col } else { col + i };
-            new_board.data[r][c] = b'B';
+            self.data[r][c] = b'B';
         }
 
         // Aggiorna navi
-        new_board.boats[len-1] -= 1;
+        self.boats[len-1] -= 1;
 
-        Ok(new_board)
+        Ok(self)
     }
 
     /// Converte la board in una stringa salvabile su file
@@ -177,6 +175,63 @@ impl Board {
 
         s
     }
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_new_board() {
+        let boats = [1, 2, 3, 4];
+        let board = Board::new(&boats);
+        assert_eq!(board.boats, boats);
+        for row in board.data.iter() {
+            for &cell in row.iter() {
+                assert_eq!(cell, b' ');
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_boat() {
+        let boats = [1, 0, 0, 0];
+        let mut board = Board::new(&boats);
+        let result = board.add_boat(Boat::Horizontal(1), (1, 1));
+        assert!(result.is_ok());
+        let updated_board = result.unwrap();
+        assert_eq!(updated_board.data[0][0], b'B');
+        assert_eq!(updated_board.boats[0], 0);
+    }
+
+    #[test]
+    fn test_add_boat_overlap() {
+        let boats = [2, 0, 0, 0];
+        let mut board = Board::new(&boats);
+        let result = board.add_boat(Boat::Horizontal(1), (1, 1));
+        assert!(result.is_ok());
+        let result = board.add_boat(Boat::Horizontal(1), (1, 1));
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), Error::Overlap);
+    }
+
+    #[test]
+    fn test_add_boat_out_of_bounds() {
+        let boats = [0, 0, 0, 1];
+        let mut board = Board::new(&boats);
+        let result = board.add_boat(Boat::Horizontal(4), (18, 18));
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), Error::OutOfBounds);  
+    }
+
+    #[test]
+    fn test_add_boat_count() {
+        let boats = [0, 0, 0, 0];
+        let mut board = Board::new(&boats);
+        let result = board.add_boat(Boat::Horizontal(1), (1, 1));
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), Error::BoatCount);
+    }
+
 }
 
 fn main() {
@@ -227,7 +282,7 @@ fn main() {
             let boat = if is_vert { Boat::Vertical(len) } else { Boat::Horizontal(len) };
 
             let content = std::fs::read_to_string(filename).expect("Unable to read file");
-            let board = Board::from(content);
+            let mut board = Board::from(content);
 
             match board.add_boat(boat, (row, col)) {
                 Ok(updated_board) => {
