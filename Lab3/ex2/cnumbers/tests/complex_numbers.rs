@@ -1,4 +1,4 @@
-use complex_numbers::solution::{ComplexNumber, ComplexNumberError};
+use cnumbers::solution::{ComplexNumber, ComplexNumberError};
 
 // for this execise see https://doc.rust-lang.org/beta/std/primitive.f64.html
 // you can find examples for all the traits that must be implemented
@@ -7,7 +7,7 @@ pub fn test_create() {
     let a = ComplexNumber::new(1.0, 2.0);
     assert_eq!(a.real(), 1.0);
     assert_eq!(a.imag(), 2.0);
-}\
+}
 
 #[test]
 pub fn test_create_from_real() {
@@ -38,7 +38,7 @@ pub fn test_add() {
 
     assert_eq!(c.to_tuple(), (2.0, 4.0));
 }
-
+ 
 #[test]
 pub fn test_add_with_real() {
     // set RHS (rihgt hand side) type for Add!!! It's default value is Self, but it can be changed to anything
@@ -98,30 +98,30 @@ pub fn test_default_values() {
         assert_eq!(el.to_tuple(), (0.0, 0.0));
     }
 }
-
+/*
 // commented out again when implementing TryInto see note below
-//#[test]
-//pub fn test_convert_into_real() {
-//    let a = ComplexNumber::from_real(1.0);
-//    let b: f64 = a.into();
-//
-//    assert_eq!(b, 1.0);
-//
-//}
+#[test]
+pub fn test_convert_into_real() {
+    let a = ComplexNumber::from_real(1.0);
+    let b: f64 = a.into();
+
+    assert_eq!(b, 1.0);
+
+}
 
 // commented out again when implementing TryInto because it's covered by TryInto see note below
-//#[test]
-//pub fn test_panic_when_impossible_to_convert_to_real() {
-//    // we can convert into a real only if imag is 0
-//    let a = ComplexNumber::new(1.0, 2.0);
-//
-//    let result = std::panic::catch_unwind(|| {
-//        let _: f64 = a.into();
-//    });
-//
-//    assert!(result.is_err());
-//}
+#[test]
+pub fn test_panic_when_impossible_to_convert_to_real() {
+    // we can convert into a real only if imag is 0
+    let a = ComplexNumber::new(1.0, 2.0);
 
+    let result = std::panic::catch_unwind(|| {
+        let _: f64 = a.into();
+    });
+
+    assert!(result.is_err());
+}
+*/
 #[test]
 pub fn test_try_into_f64() {
     // write trait and a test for the Trait TryInto for converting into f64
