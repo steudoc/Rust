@@ -192,23 +192,35 @@ impl<'a> LazyFinder<'a> {
         // return Some(Match) if there is a match
         // each time save the position of the match for the next call
         
-        let mut matches = Vec::new();
-        let re = regex::Regex::new(pattern).unwrap();
-        for (line_idx, line) in lines.iter().enumerate() {
-            for mat in re.find_iter(line) {
-                matches.push(Match {
+        let re = regex::Regex::new(&self.pattern).unwrap();
+
+        let pos = self.pos?;
+
+        for (line_idx, line) in self.lines.iter().enumerate().skip(pos.line) {
+            // on starting the line, only consider matches at or after pos.offset
+            // on subsequent lines, starts from 0
+            let search_from = if line_idx == pos.line {pos.offset} else {0};
+
+            if let Some(mat) = re.find(&line[search_from..]) {
+                let abs_start = search_from + mat.start();
+                let abs_end = search_from + mat.end();
+
+                self.pos = Some(FinderPos { line: line_idx, offset: abs_end });
+                
+                return Some(Match {
                     line: line_idx,
-                    start: mat.start(),
-                    end: mat.end(),
-                    text: &line[mat.start()..mat.end()],
+                    start: abs_start,
+                    end: abs_end,
+                    text: &line[abs_start..abs_end],
                     repl: None,
                 });
             }
         }
-        matches
+        self.pos = None;
+        None
     }
 }
-/*
+
 // (7) example of how to use the LazyFinder
 #[test]
 fn test_lazy_finder() {
@@ -227,23 +239,52 @@ fn test_lazy_finder() {
 
 // (8) now you have everything you need to implement the real Iterator
 
-struct FindIter {
-    lines: Vec<&str>,
+struct FindIter<'a> {
+    lines: Vec<&'a str>,
     pattern: String,
-    // ... other?
+    pos: Option<FinderPos>,
 }
 
-impl FindIter {
-    pub fn new(lines: Vec<&str>, pattern: &str) -> Self {
-        unimplemented!()
+impl<'a> FindIter<'a> {
+    pub fn new(lines: Vec<&'a str>, pattern: &str) -> Self {
+        Self { 
+            lines, 
+            pattern: pattern.to_string(),
+            pos: Some(FinderPos { line: 0, offset: 0 }), 
+        }
     }
 }
 
-impl Iterator for FindIter {
-    type Item = Match; // <== we inform the Iterator that we return a Match
+impl<'a> Iterator for FindIter<'a> {
+    type Item = Match<'a>; // <== we inform the Iterator that we return a Match
 
     fn next(&mut self) -> Option<Self::Item> {
-        unimplemented!()
+        let re = regex::Regex::new(&self.pattern).unwrap();
+
+        let pos = self.pos?;
+
+        for (line_idx, line) in self.lines.iter().enumerate().skip(pos.line) {
+            // on starting the line, only consider matches at or after pos.offset
+            // on subsequent lines, starts from 0
+            let search_from = if line_idx == pos.line {pos.offset} else {0};
+
+            if let Some(mat) = re.find(&line[search_from..]) {
+                let abs_start = search_from + mat.start();
+                let abs_end = search_from + mat.end();
+
+                self.pos = Some(FinderPos { line: line_idx, offset: abs_end });
+
+                return Some(Match {
+                    line: line_idx,
+                    start: abs_start,
+                    end: abs_end,
+                    text: &line[abs_start..abs_end],
+                    repl: None,
+                });
+            }
+        }
+        self.pos = None;
+        None
     }
 }
 
@@ -263,4 +304,3 @@ fn test_find_iter() {
     }
 }
 
-*/
