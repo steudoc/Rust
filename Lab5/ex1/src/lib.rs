@@ -237,41 +237,186 @@ pub mod dlist {
 // double linked list suggestions:
 // the node has both a next and a prev link
 
-// type NodeLink = ???
-// typer NodeBackLink = ???
-// struct DNode<T> {
-//     elem: T,
-//     prev: NodeBackLink,  // which type do we use here?
-//     next: NodeLink, // which type do we use here?
-// }
+    use std::{cell::RefCell, rc::{Rc, Weak}};
 
-// struct DList {
-// head: NodeLink,
-// tail: NodeLink
-// }
+use crate::dlist;
 
-// use Rc, since we need more than one reference to the same node. 
-// You need to both strong and weak references
+    type NodeLink<T> = Option<Rc<RefCell<DNode<T>>>>;
+    type NodeBackLink<T> = Option<Weak<RefCell<DNode<T>>>>;
+    struct DNode<T> {
+        elem: T,
+        prev: NodeBackLink<T>,  // which type do we use here?
+        next: NodeLink<T>, // which type do we use here?
+    }
 
-// For mutating the list and changing the next and prev fields we also need to be able to mutate the node, 
-// therefore we can use RefCell too (as for the tree at lesson)
+    struct DList<T> {
+        head: NodeLink<T>,
+        tail: NodeLink<T>,
+    }
 
-// how to access content of Rc<RefCell<T>>:
-// es let a = Rc::new(RefCell::new(5));
-// let mut x = (*a).borrow_mut();  // with (*a) we dereference the Rc, with (*a).borrow_mut() we get a mutable reference to the content of the RefCell
-// *x = 6; // we can now change the content of the RefCell
+    // use Rc, since we need more than one reference to the same node. 
+    // You need to both strong and weak references
 
-// hint for pop: you can return either a reference to the value or take the value out of the Rc, 
-// but usually it is not possible to take out the value from an Rc since it may be referenced elsewhere.
-// if you can guarantee it's the only reference to the value  you can use Rc::try_unwrap(a).unwrap().into_inner() to get the value
-// it first takes out the value from the Rc, then it tries to unwrap the value from the Result, and finally it takes the inner value from the Result
-// see here
-// https://stackoverflow.com/questions/70404603/how-to-return-the-contents-of-an-rc
-// otherwise you can impose the COPY trait on T 
+    // For mutating the list and changing the next and prev fields we also need to be able to mutate the node, 
+    // therefore we can use RefCell too (as for the tree at lesson)
 
-// other hint that may be useful: Option<T> has a default clone implementation which calls the clone of T. Therefore:
-// Some(T).clone() ->  Some(T.clone())
-// None.clone() -> None
+    // how to access content of Rc<RefCell<T>>:
+    // es let a = Rc::new(RefCell::new(5));
+    // let mut x = (*a).borrow_mut();  // with (*a) we dereference the Rc, with (*a).borrow_mut() we get a mutable reference to the content of the RefCell
+    // *x = 6; // we can now change the content of the RefCell
 
+    // hint for pop: you can return either a reference to the value or take the value out of the Rc, 
+    // but usually it is not possible to take out the value from an Rc since it may be referenced elsewhere.
+    // if you can guarantee it's the only reference to the value  you can use Rc::try_unwrap(a).unwrap().into_inner() to get the value
+    // it first takes out the value from the Rc, then it tries to unwrap the value from the Result, and finally it takes the inner value from the Result
+    // see here
+    // https://stackoverflow.com/questions/70404603/how-to-return-the-contents-of-an-rc
+    // otherwise you can impose the COPY trait on T 
+
+    // other hint that may be useful: Option<T> has a default clone implementation which calls the clone of T. Therefore:
+    // Some(T).clone() ->  Some(T.clone())
+    // None.clone() -> None
+
+    impl<T> DList<T> {
+        pub fn new() -> Self {
+            Self { head: None, tail: None }
+        }
+
+        pub fn push_front(&mut self, elem: T) {
+            let new_node = Rc::new(RefCell::new(DNode {
+                elem,
+                prev: None,
+                next: None,
+            }));
+
+            match self.head.take() {
+                None => {
+                    // empty list
+                    self.tail = Some(Rc::clone(&new_node));
+                    self.head = Some(new_node);
+                },
+                Some(old_head) => {
+                    new_node.borrow_mut().next = Some(Rc::clone(&old_head));
+                    old_head.borrow_mut().prev = Some(Rc::downgrade(&new_node));
+                    self.head = Some(new_node);
+                }
+            }
+        }
+
+        pub fn pop_front(&mut self) -> Option<T> {
+            self.head.take().map(|old_head| {
+                match old_head.borrow_mut().next.take() {
+                    None => {
+                        // era l'unico nodo, anche tail va a None
+                        self.tail = None;
+                    },
+                    Some(next_node) => {
+                        // stacca il prev dal successore (non punta più ad old_head)
+                        next_node.borrow_mut().prev = None;
+                        self.head = Some(next_node);
+                    }
+                }
+                // ora old_head ha rc=1 (nessuno lo referenzia più)
+                Rc::try_unwrap(old_head)
+                    .ok()   // Result -> Option
+                    .unwrap()   // siamo sicuri che rc = 1
+                    .into_inner()   // RefCell<DNode<T>> -> DNode<T>
+                    .elem
+            })
+        }
+
+        pub fn push_back(&mut self, elem: T) {
+            let new_node = Rc::new(RefCell::new(DNode {
+                elem,
+                prev: None,
+                next: None,
+            }));
+
+            match self.tail.take() {
+                None => {
+                    // lista vuota: identico a push_front
+                    self.head = Some(Rc::clone(&new_node));
+                    self.tail = Some(new_node);
+                },
+                Some(old_tail) => {
+                    // collega old_tail  a new_node
+                    old_tail.borrow_mut().next = Some(Rc::clone(&new_node));
+                    // collega new_node a old_tail (weak)
+                    new_node.borrow_mut().prev = Some(Rc::downgrade(&old_tail));
+                    // aggiorna tail
+                    self.tail = Some(new_node);
+                }
+            }
+        }
+
+        pub fn pop_back(&mut self) -> Option<T> {
+            self.tail.take().map(|old_tail| {
+                match old_tail.borrow_mut().prev.take() {
+                    None => {
+                        // era l'unico nodo
+                        self.head = None;
+                    },
+                    Some(prev_weak) => {
+                        // upgrade: weak -> Rc
+                        let prev_node = prev_weak.upgrade().expect("prev node dropped unexpectedly");
+                        // stacca il next del processore
+                        prev_node.borrow_mut().next = None;
+                        // il predecessore diventa la nuova tail
+                        self.tail = Some(prev_node);
+                    }
+                }
+                // old_tail ora ha rc = 1
+                Rc::try_unwrap(old_tail)
+                    .ok()
+                    .unwrap()
+                    .into_inner()
+                    .elem
+            })
+        }
+
+        pub fn popn(&mut self, n: usize) -> Option<T> {
+            let mut current = Rc::clone(self.head.as_ref()?);
+            for _ in 0..n {
+                let next = current.borrow().next.as_ref()?.clone();
+                current = next;
+            }
+
+            let prev_weak = current.borrow_mut().prev.take();
+            let next_node = current.borrow_mut().next.take();
+
+            match (&prev_weak, &next_node) {
+                (None, None) => {
+                    // unico nodo
+                    self.head = None;
+                    self.tail = None;
+                },
+                (None, Some(_)) => {
+                    // è la testa
+                    let next = next_node.as_ref().unwrap();
+                    next.borrow_mut().prev = None;
+                    self.head = next_node.clone();
+                },
+                (Some(_), None) => {
+                    // è la coda
+                    let prev = prev_weak.as_ref().unwrap().upgrade().unwrap();
+                    prev.borrow_mut().next = None;
+                    self.tail = Some(prev);
+                },
+                (Some(pw), Some(nx)) => {
+                    // nodo intermedio: ricollega prev a next
+                    let prev = pw.upgrade().unwrap();
+                    prev.borrow_mut().next = Some(Rc::clone(nx));
+                    nx.borrow_mut().prev = Some(Rc::downgrade(&prev));
+                }
+            }
+
+            Rc::try_unwrap(current)
+                .ok()
+                .unwrap()
+                .into_inner()
+                .elem
+                .into() // Option<T>
+        }
+    }
 
 }
